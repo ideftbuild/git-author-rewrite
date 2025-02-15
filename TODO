@@ -1,0 +1,4 @@
+
+Add some retrictions such as;
+1. Reject rewrites if user is in the main or master branch.
+2. If any difference between what is in the git config is different from what is provided prompt a warning message.
