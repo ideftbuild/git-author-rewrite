@@ -1,7 +1,7 @@
 [project]
 name = "git-author-rewrite"
 version = "0.1.0"
-description = "git-reown is a command-line tool that allows developers to update the author name and/or email in Git commit history. It offers flexible options to either interactively modify specific commits or perform a full history rewrite, ensuring accurate attribution while minimizing disruption to collaborators."
+description = "git-author-rewrite is a command-line tool that allows developers to update the author name and/or email in Git commit history. It offers flexible options to either interactively modify specific commits or perform a full history rewrite, ensuring accurate attribution while minimizing disruption to collaborators."
 authors = [
     {name = "ideftbuild",email = "a.akanSWE@gmail.com"}
 ]
@@ -13,6 +13,8 @@ dependencies = [
     "git-filter-repo (>=2.47.0,<3.0.0)"
 ]
 
+[tool.poetry.scripts]
+git-author-rewrite = "git_author_rewrite.main:main" 
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
