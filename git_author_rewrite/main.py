@@ -1,63 +1,119 @@
 #!/usr/bin/python3
 import sys
 import re
-# import gitpython
+import git
+import argparse
+from git_author_rewrite.enums import Status
 
-options  = ('-n', '--name', '-e', '--email')
+BRANCH_NAME = 'author-rewrite'
 
+def display_messages(*messages: str, status: Status = Status.SUCCESS):
+    """Print messages to stdout or stderr based on status.
 
-def display_err_message(message: str):
-    print(message, file=sys.stderr)
-    exit(1)
+    Args:
+        messages (str): One or more messages to print.
+        status (Status, optional): The message status. Defaults to Status.SUCCESS.
+
+    Raises:
+        SystemExit: If status is Status.ERROR, the function exits with an error code.
+    """
+
+    if status == Status.ERROR:
+        print(*messages, sep='\n', file=sys.stderr)
+        sys.exit(status.value)
+    else:
+        print(*messages, sep='\n')
 
 
 def is_email_format_valid(email: str) -> bool:
+    """Validate whether an email is in a proper format.
+
+    Args:
+        email (str): The email address to validate.
+
+    Returns:
+        bool: True if the email format is valid, False otherwise.
+    """
+
     pattern = r'.+@.+.com'
     return False if re.match(pattern, email) is None else True
 
 
-def get_author_info(args: list, step: int) -> dict: 
-    author_info = {}
+def create_parser():
+    """Create and return a command-line argument parser.
 
-    for i in range(0, len(args), step):
+    Returns:
+        argparse.ArgumentParser: The configured argument parser.
+    """
 
-        # Check if option is supported
-        if args[i] not in options:
-            display_err_message(f"error: unknown option '{args[i]}'")
+    parser = argparse.ArgumentParser(
+        prog='git-author-rewrite',
+        description='git-author-rewrite is a command-line tool that allows developers to update the author name and/or email in Git commit history. It offers flexible options to either interactively modify specific commits or perform a full history rewrite, ensuring accurate attribution while minimizing disruption to collaborators.',
+        epilog='Checkout out https://github.com/ideftbuild/git-author-rewrite')
 
-        # Retrieve author info from argument
-        match args[i]:
-            case '-n' | '--name':
-                author_info['old_name'] = args[i + 1]
-                author_info['new_name'] = args[i + 2]
-            case '-e' | '--email':
-                old_email = args[i + 1]
-                new_email = args[i + 2]
+    parser.add_argument('-n', '--name', nargs=2, metavar=('old_name', 'new_name'), help='Provide the old name to update and the new name')
+    parser.add_argument('-e', '--email', nargs=2, metavar=('old_email', 'new_email'), help='Provide the old email to update and the new email')
+    parser.add_argument('-l', '--local-path', help='Provide the path to the local repository')
+    
 
-                if not is_email_format_valid(new_email):
-                    display_err_message(f"error: invalid email format '{new_email}'")
-                author_info['old_email'] = old_email
-                author_info['new_email'] = new_email
-
-    print('author info is: ', author_info)
-    return author_info
-
-
-def check_usage(args: list):
-    usage_message = "USAGE: git-author-rewrite [option] [old] [new]. See 'git-author-rewrite --help."
-    step = 3
-
-    if len(args) % step != 0:
-        display_err_message(usage_message)
+    return parser
 
 
 def main(args: list = sys.argv[1:]):
-    # Author info
-    # help(gitpython)
-    check_usage(args)
+    """main entry point for the script.
 
-    step = 3
-    get_author_info(args, step)
+    Args:
+        args (list, optional): command-line arguments. defaults to sys.argv[1:].
+    """
+
+    parser = create_parser()
+
+    args = parser.parse_args()
+
+    repo = git.Repo(args.local_path if args.local_path else '.')  # Connect to repo
+
+    if 'origin' not in repo.remotes:
+        display_messages("No remote named 'origin' found.", status=Status.ERROR)
+
+    default_branch = repo.heads.main if 'main' in repo.heads else repo.heads.master  # Get default branch
+
+    repo.git.checkout(default_branch.name)
+    display_messages(f"Switched to '{default_branch.name}'")
+    
+    repo.remotes.origin.pull(refspec=default_branch.name)
+    display_messages('Pulled latest changes from remote')
+
+    try:
+        if BRANCH_NAME in repo.heads:
+            if repo.active_branch.name != BRANCH_NAME:
+                repo.git.checkout(BRANCH_NAME)  # Switch to branch if it exists              
+                display_messages(f"Switched to '{BRANCH_NAME}'")
+
+            repo.git.merge(default_branch)  # Update the branch 
+            display_messages(f"Merged '{default_branch}' to '{BRANCH_NAME}'")
+        else:
+            rewrite_branch = repo.create_head(BRANCH_NAME)
+            display_messages(f'Created new branch: ' + BRANCH_NAME)
+
+            rewrite_branch.checkout()
+            display_messages(f'Switched to new branch: {BRANCH_NAME}')
+    except Exception as e:
+        display_messages(f"Error: Failed to rewrite branch '{BRANCH_NAME}': {e}",
+                         'To proceed, you can:',
+                         '  - Fix the errors and retry.',
+                         "  - Use the '-d' or '--delete' option to delete this branch and start fresh.",
+                         status=Status.ERROR)
+        # repo.git.branch('-D', BRANCH_NAME)
+        # print(f'Deleted {BRANCH_NAME} branch')
+        # print(f'Cleaning up...')
+
+
+
+
+    # print('Done rewritting...')
+    # repo.git.checkout('main')
+    # print('Switched to 'main'')
+
 
 if __name__ == '__main__':
     main()
