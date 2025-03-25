@@ -138,7 +138,7 @@ def main(args: list = sys.argv[1:]):
         display_messages(f"Error: Failed to rewrite branch '{BRANCH_NAME}': {e}",
                          'To proceed, you can:',
                          '  - Fix the errors and retry.',
-                         "  - Use the '-d' or '--delete' option to delete this branch and start fresh.",
+                         "  - Use the '-r' or '--reset' option to delete this branch and start fresh.",
                          status=Status.ERROR)
 
 
