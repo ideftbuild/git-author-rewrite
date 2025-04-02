@@ -4,25 +4,11 @@ import re
 import git
 import argparse
 from git_author_rewrite.enums import Status
+from git_author_rewrite.installer import ensure_pip_packages
+from git_author_rewrite.message_handler import display_messages
+
 
 BRANCH_NAME = 'author-rewrite'
-
-def display_messages(*messages: str, status: Status = Status.SUCCESS):
-    """Print messages to stdout or stderr based on status.
-
-    Args:
-        messages (str): One or more messages to print.
-        status (Status, optional): The message status. Defaults to Status.SUCCESS.
-
-    Raises:
-        SystemExit: If status is Status.ERROR, the function exits with an error code.
-    """
-
-    if status == Status.ERROR:
-        print(*messages, sep='\n', file=sys.stderr)
-        sys.exit(status.value)
-    else:
-        print(*messages, sep='\n')
 
 
 def is_email_format_valid(email: str) -> bool:
@@ -104,13 +90,15 @@ def main(args: list = sys.argv[1:]):
     Args:
         args (list, optional): command-line arguments. defaults to sys.argv[1:].
     """
+    ensure_pip_packages()
+
     parser = create_parser()
 
     args = parser.parse_args()
 
     repo = git.Repo(args.local_path if args.local_path else '.')  # Connect to repo
 
-    print('repo:', repo)
+    print('Repository:', repo)
 
     if 'origin' not in repo.remotes:
         display_messages("No remote named 'origin' found", status=Status.ERROR)
